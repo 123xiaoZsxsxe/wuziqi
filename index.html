@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>五子棋 · Gomoku</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app">
+  <header class="head">
+    <h1>五子棋</h1>
+    <p class="sub">GOMOKU · 15 × 15</p>
+  </header>
+
+  <section class="stage">
+    <canvas id="board" aria-label="五子棋棋盘"></canvas>
+    <div class="status" id="status">
+      <span class="dot black" id="turnDot"></span>
+      <span id="statusText">黑棋落子</span>
+      <span class="moves" id="moveCount">第 0 手</span>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="segmented" role="group" aria-label="对战模式">
+      <button type="button" data-mode="pvp" class="active">双人对战</button>
+      <button type="button" data-mode="pve">人机对战</button>
+    </div>
+    <div class="actions">
+      <button type="button" id="undo" class="btn">悔棋</button>
+      <button type="button" id="restart" class="btn primary">重新开始</button>
+    </div>
+  </div>
+
+  <p class="hint">黑棋先行 · 五子连珠即胜 · 人机模式中你执黑</p>
+</main>
+<script src="game.js"></script>
+</body>
+</html>
