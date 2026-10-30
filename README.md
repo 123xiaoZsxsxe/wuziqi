@@ -1,4 +1,4 @@
-# 五子棋
+## 五子棋
 
 网页版五子棋，原生 HTML + Canvas + JavaScript，没有依赖。双击 `index.html` 就能玩。
 
@@ -31,6 +31,3 @@ style.css    样式
 game.js      棋盘绘制、规则判定、人机 AI
 ```
 
-## License
-
-MIT
