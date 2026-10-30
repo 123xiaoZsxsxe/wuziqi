@@ -19,6 +19,8 @@
   const difficultyBtns = document.querySelectorAll('[data-difficulty]');
 
   let board, current, history, gameOver, winner, winLine, hover;
+  let keyboardCursor = { x: 7, y: 7 };
+  let keyboardFocus = false;
   let mode = 'pvp';
   let difficulty = 'normal';
   let thinking = false;
@@ -39,7 +41,9 @@
   }
 
   function renderTimer() {
-    timerEl.textContent = formatTime(timer.running ? Date.now() - timer.start : timer.elapsed);
+    const text = formatTime(timer.running ? Date.now() - timer.start : timer.elapsed);
+    timerEl.textContent = text;
+    timerEl.setAttribute('aria-label', `用时 ${text}`);
   }
 
   function startTimer() {
@@ -76,6 +80,7 @@
     winner = 0;
     winLine = null;
     hover = null;
+    keyboardCursor = { x: 7, y: 7 };
     thinking = false;
     difficultyEl.hidden = mode !== 'pve';
     resetTimer();
@@ -109,8 +114,9 @@
 
   function findWin(x, y, player) {
     for (const [dx, dy] of DIRS) {
-      const cells = [[x, y]];
-      for (const sign of [1, -1]) {
+      const before = [];
+      const after = [];
+      for (const [sign, cells] of [[-1, before], [1, after]]) {
         let i = 1;
         while (true) {
           const nx = x + dx * i * sign;
@@ -121,6 +127,7 @@
           i++;
         }
       }
+      const cells = [...before.reverse(), [x, y], ...after];
       if (cells.length >= 5) return cells;
     }
     return null;
@@ -147,12 +154,15 @@
 
   function updateStatus() {
     moveCountEl.textContent = `第 ${history.length} 手`;
+    moveCountEl.setAttribute('aria-label', `当前第 ${history.length} 手`);
     undoBtn.disabled = thinking || history.length === 0;
+    canvas.setAttribute('aria-busy', String(thinking));
 
     const label = (p) => (p === BLACK ? '黑棋' : '白棋');
     if (gameOver) {
       statusText.textContent = winner ? `${label(winner)}获胜` : '平局';
       turnDot.className = 'dot ' + (winner === WHITE ? 'white' : 'black');
+      canvas.setAttribute('aria-label', `五子棋棋盘，${statusText.textContent}`);
       return;
     }
     if (mode === 'pve' && current === AI) {
@@ -161,6 +171,7 @@
       statusText.textContent = `${label(current)}落子`;
     }
     turnDot.className = 'dot ' + (current === BLACK ? 'black' : 'white');
+    canvas.setAttribute('aria-label', `五子棋棋盘，${statusText.textContent}`);
   }
 
   /* ---------------- AI ---------------- */
@@ -429,6 +440,19 @@
       ctx.fill();
     }
 
+    // 键盘选点标记
+    if (keyboardFocus && !gameOver && !thinking) {
+      const x = cx(keyboardCursor.x);
+      const y = cy(keyboardCursor.y);
+      ctx.save();
+      ctx.strokeStyle = '#4d7fff';
+      ctx.lineWidth = Math.max(2, cell * 0.07);
+      ctx.shadowColor = 'rgba(77, 127, 255, 0.75)';
+      ctx.shadowBlur = cell * 0.18;
+      ctx.strokeRect(x - cell * 0.47, y - cell * 0.47, cell * 0.94, cell * 0.94);
+      ctx.restore();
+    }
+
     // 胜利连线
     if (winLine && winLine.length >= 5) {
       const a = winLine[0];
@@ -514,12 +538,50 @@
     }
     if (!hover || hover.x !== p.x || hover.y !== p.y) {
       hover = p;
+      keyboardCursor = p;
       draw();
     }
   });
 
   canvas.addEventListener('pointerleave', () => {
     if (hover) { hover = null; draw(); }
+  });
+
+  canvas.addEventListener('focus', () => {
+    keyboardFocus = true;
+    draw();
+  });
+
+  canvas.addEventListener('blur', () => {
+    keyboardFocus = false;
+    draw();
+  });
+
+  canvas.addEventListener('keydown', (evt) => {
+    const directions = {
+      ArrowUp: [0, -1], ArrowDown: [0, 1],
+      ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+    };
+    const direction = directions[evt.key];
+    if (direction) {
+      evt.preventDefault();
+      keyboardCursor = {
+        x: Math.max(0, Math.min(SIZE - 1, keyboardCursor.x + direction[0])),
+        y: Math.max(0, Math.min(SIZE - 1, keyboardCursor.y + direction[1])),
+      };
+      hover = null;
+      draw();
+      return;
+    }
+    if (evt.key === 'Escape') {
+      canvas.blur();
+      return;
+    }
+    if (evt.key !== 'Enter' && evt.key !== ' ') return;
+    evt.preventDefault();
+    if (gameOver || thinking || (mode === 'pve' && current !== HUMAN)) return;
+    if (!place(keyboardCursor.x, keyboardCursor.y)) return;
+    scheduleAI();
   });
 
   undoBtn.addEventListener('click', undo);
@@ -529,7 +591,10 @@
     btn.addEventListener('click', () => {
       if (btn.dataset.mode === mode) return;
       mode = btn.dataset.mode;
-      modeBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      modeBtns.forEach((b) => {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-pressed', String(b === btn));
+      });
       newGame();
     });
   });
@@ -537,7 +602,10 @@
   difficultyBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       difficulty = btn.dataset.difficulty;
-      difficultyBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      difficultyBtns.forEach((b) => {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-pressed', String(b === btn));
+      });
     });
   });
 

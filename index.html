@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="无需依赖的网页版五子棋，支持双人对战与三档人机难度。">
+<meta name="theme-color" content="#10131a">
 <title>五子棋 · Gomoku</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -14,8 +16,9 @@
   </header>
 
   <section class="stage">
-    <canvas id="board" aria-label="五子棋棋盘"></canvas>
-    <div class="status" id="status">
+    <canvas id="board" role="application" tabindex="0" aria-label="五子棋棋盘" aria-describedby="boardInstructions" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Enter Space"></canvas>
+    <p id="boardInstructions" class="sr-only">按方向键移动选点，按空格或回车落子。按 Escape 退出棋盘操作。</p>
+    <div class="status" id="status" role="status" aria-live="polite">
       <span class="dot black" id="turnDot"></span>
       <span id="statusText">黑棋落子</span>
       <span class="timer" id="timer">00:00</span>
@@ -25,13 +28,13 @@
 
   <div class="toolbar">
     <div class="segmented" role="group" aria-label="对战模式">
-      <button type="button" data-mode="pvp" class="active">双人</button>
-      <button type="button" data-mode="pve">人机</button>
+      <button type="button" data-mode="pvp" class="active" aria-pressed="true">双人</button>
+      <button type="button" data-mode="pve" aria-pressed="false">人机</button>
     </div>
     <div class="segmented" id="difficulty" role="group" aria-label="难度" hidden>
-      <button type="button" data-difficulty="easy">简单</button>
-      <button type="button" data-difficulty="normal" class="active">普通</button>
-      <button type="button" data-difficulty="hard">困难</button>
+      <button type="button" data-difficulty="easy" aria-pressed="false">简单</button>
+      <button type="button" data-difficulty="normal" class="active" aria-pressed="true">普通</button>
+      <button type="button" data-difficulty="hard" aria-pressed="false">困难</button>
     </div>
     <div class="actions">
       <button type="button" id="undo" class="btn">悔棋</button>
