@@ -18,14 +18,20 @@
     <div class="status" id="status">
       <span class="dot black" id="turnDot"></span>
       <span id="statusText">黑棋落子</span>
+      <span class="timer" id="timer">00:00</span>
       <span class="moves" id="moveCount">第 0 手</span>
     </div>
   </section>
 
   <div class="toolbar">
     <div class="segmented" role="group" aria-label="对战模式">
-      <button type="button" data-mode="pvp" class="active">双人对战</button>
-      <button type="button" data-mode="pve">人机对战</button>
+      <button type="button" data-mode="pvp" class="active">双人</button>
+      <button type="button" data-mode="pve">人机</button>
+    </div>
+    <div class="segmented" id="difficulty" role="group" aria-label="难度" hidden>
+      <button type="button" data-difficulty="easy">简单</button>
+      <button type="button" data-difficulty="normal" class="active">普通</button>
+      <button type="button" data-difficulty="hard">困难</button>
     </div>
     <div class="actions">
       <button type="button" id="undo" class="btn">悔棋</button>

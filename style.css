@@ -89,8 +89,16 @@ body {
 .dot.black { background: linear-gradient(145deg, #4a4f57, #0a0c10); }
 .dot.white { background: linear-gradient(145deg, #ffffff, #c3c7cf); }
 
-.status .moves {
+.status .timer {
   margin-left: auto;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.status .moves {
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -112,16 +120,19 @@ body {
   border: 1px solid var(--line);
 }
 
+.segmented[hidden] { display: none; }
+
 .segmented button {
   border: 0;
   background: transparent;
   color: var(--muted);
-  padding: 8px 16px;
+  padding: 8px 14px;
   font-size: 13px;
   border-radius: 9px;
   cursor: pointer;
   transition: background 0.18s, color 0.18s;
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .segmented button:hover { color: var(--text); }

@@ -13,13 +13,57 @@
   const moveCountEl = document.getElementById('moveCount');
   const undoBtn = document.getElementById('undo');
   const restartBtn = document.getElementById('restart');
-  const modeBtns = document.querySelectorAll('.segmented button');
+  const timerEl = document.getElementById('timer');
+  const difficultyEl = document.getElementById('difficulty');
+  const modeBtns = document.querySelectorAll('[data-mode]');
+  const difficultyBtns = document.querySelectorAll('[data-difficulty]');
 
   let board, current, history, gameOver, winner, winLine, hover;
   let mode = 'pvp';
+  let difficulty = 'normal';
   let thinking = false;
   let gen = 0;
   let metrics = { size: 0, pad: 0, cell: 0 };
+
+  /* ---------------- 计时 ---------------- */
+
+  let timer = { start: 0, elapsed: 0, running: false, id: 0 };
+
+  function formatTime(ms) {
+    const t = Math.floor(ms / 1000);
+    const h = Math.floor(t / 3600);
+    const m = Math.floor((t % 3600) / 60);
+    const s = t % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    return h ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
+  function renderTimer() {
+    timerEl.textContent = formatTime(timer.running ? Date.now() - timer.start : timer.elapsed);
+  }
+
+  function startTimer() {
+    if (timer.running) return;
+    timer.start = Date.now() - timer.elapsed;
+    timer.running = true;
+    clearInterval(timer.id);
+    timer.id = setInterval(renderTimer, 250);
+    renderTimer();
+  }
+
+  function stopTimer() {
+    if (!timer.running) return;
+    timer.elapsed = Date.now() - timer.start;
+    timer.running = false;
+    clearInterval(timer.id);
+    renderTimer();
+  }
+
+  function resetTimer() {
+    clearInterval(timer.id);
+    timer = { start: 0, elapsed: 0, running: false, id: 0 };
+    renderTimer();
+  }
 
   /* ---------------- 棋局状态 ---------------- */
 
@@ -33,6 +77,8 @@
     winLine = null;
     hover = null;
     thinking = false;
+    difficultyEl.hidden = mode !== 'pve';
+    resetTimer();
     updateStatus();
     draw();
   }
@@ -42,6 +88,7 @@
     board[y][x] = current;
     history.push({ x, y, player: current });
     hover = null;
+    startTimer();
 
     const line = findWin(x, y, current);
     if (line) {
@@ -54,6 +101,7 @@
     } else {
       current = 3 - current;
     }
+    if (gameOver) stopTimer();
     updateStatus();
     draw();
     return true;
@@ -91,6 +139,8 @@
       board[m.y][m.x] = EMPTY;
     }
     current = history.length ? 3 - history[history.length - 1].player : BLACK;
+    if (history.length) startTimer();
+    else resetTimer();
     updateStatus();
     draw();
   }
@@ -121,25 +171,87 @@
     const me = current;
     const opp = 3 - me;
     const candidates = getCandidates();
+    if (!candidates.length) return [7, 7];
+
+    const winNow = findFive(candidates, me);
+    if (winNow) return winNow;
+
+    const mustBlock = findFive(candidates, opp);
+    if (mustBlock && difficulty !== 'easy') return mustBlock;
+
+    if (difficulty === 'easy') return easyMove(candidates, me, opp);
+    if (difficulty === 'hard') return hardMove(candidates, me, opp);
+    return normalMove(candidates, me, opp);
+  }
+
+  function findFive(candidates, player) {
+    for (const [x, y] of candidates) {
+      board[y][x] = player;
+      const win = findWin(x, y, player);
+      board[y][x] = EMPTY;
+      if (win) return [x, y];
+    }
+    return null;
+  }
+
+  function staticScore(x, y, me, opp, defense) {
+    const center = 7 - (Math.abs(x - 7) + Math.abs(y - 7)) * 0.5;
+    return scorePoint(x, y, me) + scorePoint(x, y, opp) * defense + center;
+  }
+
+  function easyMove(candidates, me, opp) {
+    if (Math.random() < 0.22) {
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    const scored = candidates
+      .map(([x, y]) => ({ x, y, s: staticScore(x, y, me, opp, 0.55) * (0.6 + Math.random()) }))
+      .sort((a, b) => b.s - a.s);
+    const pool = scored.slice(0, Math.max(1, Math.ceil(scored.length * 0.2)));
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    return [pick.x, pick.y];
+  }
+
+  function normalMove(candidates, me, opp) {
     let bestScore = -Infinity;
     let best = [];
-
     for (const [x, y] of candidates) {
-      const attack = scorePoint(x, y, me);
-      const defend = scorePoint(x, y, opp);
-      const center = 7 - (Math.abs(x - 7) + Math.abs(y - 7)) * 0.5;
-      const score = attack + defend * 0.9 + center;
-
-      if (score > bestScore + 1e-6) {
-        bestScore = score;
+      const s = staticScore(x, y, me, opp, 0.9);
+      if (s > bestScore + 1e-6) {
+        bestScore = s;
         best = [[x, y]];
-      } else if (Math.abs(score - bestScore) <= 1e-6) {
+      } else if (Math.abs(s - bestScore) <= 1e-6) {
         best.push([x, y]);
       }
     }
-
-    if (!best.length) return [7, 7];
     return best[Math.floor(Math.random() * best.length)];
+  }
+
+  // 两层：落子后检查对手最狠的回应，把它的威胁从得分里扣掉
+  function hardMove(candidates, me, opp) {
+    const ranked = candidates
+      .map(([x, y]) => ({ x, y, s: staticScore(x, y, me, opp, 0.9) }))
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 10);
+
+    let best = ranked[0];
+    let bestVal = -Infinity;
+
+    for (const c of ranked) {
+      board[c.y][c.x] = me;
+      let reply = 0;
+      for (const [rx, ry] of getCandidates()) {
+        const v = scorePoint(rx, ry, opp);
+        if (v > reply) reply = v;
+      }
+      board[c.y][c.x] = EMPTY;
+
+      const val = c.s - reply;
+      if (val > bestVal + 1e-6) {
+        bestVal = val;
+        best = c;
+      }
+    }
+    return [best.x, best.y];
   }
 
   function getCandidates() {
@@ -419,6 +531,13 @@
       mode = btn.dataset.mode;
       modeBtns.forEach((b) => b.classList.toggle('active', b === btn));
       newGame();
+    });
+  });
+
+  difficultyBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      difficulty = btn.dataset.difficulty;
+      difficultyBtns.forEach((b) => b.classList.toggle('active', b === btn));
     });
   });
 
